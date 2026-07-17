@@ -386,26 +386,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return false;
       } catch (err) {
-        console.error("Erro no login do Supabase, tentando fallback local:", err);
-        return fallbackLogin(user, pass);
+        console.error("Erro no login do Supabase:", err);
+        return false;
       }
-    } else {
-      return fallbackLogin(user, pass);
-    }
-  };
-
-  const fallbackLogin = (user: string, pass: string): boolean => {
-    const isValid = 
-      (user === "larissa.gomes" && pass === "160725") || 
-      (user === "leonardo.hirt" && pass === "160725") ||
-      (user === "admin" && pass === "admin");
-      
-    if (isValid) {
-      setIsAuthenticated(true);
-      setCurrentUser(user);
-      localStorage.setItem("crm_auth", "true");
-      localStorage.setItem("crm_user", user);
-      return true;
     }
     return false;
   };

@@ -132,12 +132,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          <div className="flex flex-col items-center gap-1 text-[10px] text-zinc-500 font-semibold tracking-wider uppercase border-t border-zinc-850 pt-4 text-center">
-            <span>Acesso Autorizado:</span>
-            <span>larissa.gomes / 160725</span>
-            <span>leonardo.hirt / 160725</span>
-          </div>
         </div>
       </div>
     </div>
