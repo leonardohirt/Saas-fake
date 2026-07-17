@@ -16,11 +16,13 @@ import {
   X, 
   ExternalLink,
   ChevronRight,
-  FolderKanban
+  ChevronLeft,
+  FolderKanban,
+  ClipboardList
 } from "lucide-react";
 
 export default function ClientesPage() {
-  const { clients, projects, addClient, updateClient, deleteClient } = useCRM();
+  const { clients, projects, addClient, updateClient, deleteClient, briefings, saveBriefing } = useCRM();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -34,12 +36,99 @@ export default function ClientesPage() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
+  // Briefing modal states
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
+  const [briefingClient, setBriefingClient] = useState<Client | null>(null);
+  const [briefingForm, setBriefingForm] = useState<any>({});
+  const [activeTab, setActiveTab] = useState(1);
+  const [isSavingBriefing, setIsSavingBriefing] = useState(false);
+
   // Form fields state
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+
+  const hasBriefing = (clientId: string) => {
+    return briefings && briefings[clientId] !== undefined;
+  };
+
+  const openBriefingModal = (client: Client) => {
+    setBriefingClient(client);
+    const existing = briefings[client.id] || {};
+    setBriefingForm({
+      businessName: existing.businessName || client.company || "",
+      businessTime: existing.businessTime || "",
+      mainProduct: existing.mainProduct || "",
+      differentiator: existing.differentiator || "",
+      mainCustomers: existing.mainCustomers || "",
+      history: existing.history || "",
+      brandEssence: existing.brandEssence || "",
+      
+      goals: existing.goals || [],
+      goalsOther: existing.goalsOther || "",
+      expectations: existing.expectations || "",
+      missingDigital: existing.missingDigital || "",
+      
+      targetAudience: existing.targetAudience || "",
+      targetRegion: existing.targetRegion || "",
+      targetProfile: existing.targetProfile || "",
+      whoLooksFor: existing.whoLooksFor || "",
+      whoToConquer: existing.whoToConquer || "",
+      
+      pages: existing.pages || [],
+      essentialInfo: existing.essentialInfo || "",
+      referencesSites: existing.referencesSites || "",
+      
+      materials: existing.materials || [],
+      materialsStatus: existing.materialsStatus || "",
+      needHelpContent: existing.needHelpContent || false,
+      
+      brandColors: existing.brandColors || "",
+      visualStyle: existing.visualStyle || "",
+      colorsRepresentation: existing.colorsRepresentation || "",
+      visualReferences: existing.visualReferences || "",
+      
+      features: existing.features || [],
+      featuresSpecific: existing.featuresSpecific || "",
+      clientAction: existing.clientAction || "",
+      
+      hasDomain: existing.hasDomain || "",
+      hasHosting: existing.hasHosting || "",
+      domainHostingOption: existing.domainHostingOption || "",
+      domainHostingNotes: existing.domainHostingNotes || "",
+      
+      desiredDate: existing.desiredDate || "",
+      launchEvents: existing.launchEvents || "",
+      
+      proposalItems: existing.proposalItems || [],
+      investmentNotes: existing.investmentNotes || "",
+      
+      nextSteps: existing.nextSteps || [],
+      nextStepsNotes: existing.nextStepsNotes || ""
+    });
+    setActiveTab(1);
+    setIsBriefingOpen(true);
+  };
+
+  const toggleArrayField = (fieldName: string, value: string) => {
+    setBriefingForm((prev: any) => {
+      const current = prev[fieldName] || [];
+      const updated = current.includes(value)
+        ? current.filter((v: string) => v !== value)
+        : [...current, value];
+      return { ...prev, [fieldName]: updated };
+    });
+  };
+
+  const handleSaveBriefing = async () => {
+    if (!briefingClient) return;
+    setIsSavingBriefing(true);
+    await saveBriefing(briefingClient.id, briefingForm);
+    setIsSavingBriefing(false);
+    setIsBriefingOpen(false);
+  };
 
   // Handle URL actions
   useEffect(() => {
@@ -205,8 +294,14 @@ export default function ClientesPage() {
                         {/* Title and Action Buttons */}
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h3 className="font-bold text-white text-base group-hover:text-violet-400 transition-colors leading-snug">
+                            <h3 className="font-bold text-white text-base group-hover:text-violet-400 transition-colors leading-snug flex items-center gap-2">
                               {client.name}
+                              {hasBriefing(client.id) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-semibold uppercase tracking-wider shrink-0">
+                                  <ClipboardList size={10} />
+                                  Reunião Feita
+                                </span>
+                              )}
                             </h3>
                             <div className="flex items-center gap-1.5 text-zinc-400 text-xs mt-1">
                               <Building2 size={13} className="text-zinc-500" />
@@ -327,6 +422,19 @@ export default function ClientesPage() {
                 </div>
               )}
             </div>
+
+            {/* Briefing Action Button */}
+            <button
+              onClick={() => openBriefingModal(selectedClient)}
+              className={`w-full py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all duration-200 ${
+                hasBriefing(selectedClient.id)
+                  ? "bg-emerald-950/20 border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 hover:bg-emerald-950/30"
+                  : "bg-zinc-800 hover:bg-zinc-750 border-zinc-750 text-zinc-200"
+              }`}
+            >
+              <ClipboardList size={14} />
+              {hasBriefing(selectedClient.id) ? "Ver / Editar Briefing" : "Preencher Briefing de Reunião"}
+            </button>
 
             {/* Linked Projects */}
             <div className="space-y-3 pt-4 border-t border-zinc-850">
@@ -506,6 +614,710 @@ export default function ClientesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Client Briefing Modal */}
+      {isBriefingOpen && briefingClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/90 backdrop-blur-sm p-4 overflow-hidden">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-5xl h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-zinc-850 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="text-violet-400" size={20} />
+                <div>
+                  <h2 className="text-base font-bold text-white">
+                    Briefing de Reunião: {briefingClient.name}
+                  </h2>
+                  <p className="text-xs text-zinc-400">
+                    Preencha o roteiro de perguntas para classificação e escopo do site.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBriefingOpen(false)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content Body: 2 Columns */}
+            <div className="flex-1 flex overflow-hidden min-h-0">
+              {/* Left Column: Navigation Tabs */}
+              <div className="w-64 border-r border-zinc-850 overflow-y-auto bg-zinc-950/25 shrink-0 hidden md:block">
+                <nav className="p-4 space-y-1">
+                  {[
+                    { id: 1, label: "1. O Negócio" },
+                    { id: 2, label: "2. Objetivos" },
+                    { id: 3, label: "3. Público-Alvo" },
+                    { id: 4, label: "4. Estrutura" },
+                    { id: 5, label: "5. Conteúdos" },
+                    { id: 6, label: "6. Visual" },
+                    { id: 7, label: "7. Recursos" },
+                    { id: 8, label: "8. Hospedagem" },
+                    { id: 9, label: "9. Prazo" },
+                    { id: 10, label: "10. Investimento" },
+                    { id: 11, label: "11. Passos Finais" }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                        activeTab === tab.id
+                          ? "bg-violet-950/30 text-violet-400 border border-violet-500/20"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850/40 border border-transparent"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Right Column: Active Tab Content Fields */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+                {/* Tab 1: Conhecendo o Negócio */}
+                {activeTab === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">1. Conhecendo o Negócio</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">Nome da Empresa / Marca</label>
+                        <input
+                          type="text"
+                          value={briefingForm.businessName || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, businessName: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Tempo de Mercado</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: 5 anos, recém-inaugurada..."
+                            value={briefingForm.businessTime || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, businessTime: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Diferencial da Empresa</label>
+                          <input
+                            type="text"
+                            value={briefingForm.differentiator || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, differentiator: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Principal Produto ou Serviço</label>
+                          <input
+                            type="text"
+                            value={briefingForm.mainProduct || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, mainProduct: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Quem são os principais clientes?</label>
+                          <input
+                            type="text"
+                            value={briefingForm.mainCustomers || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, mainCustomers: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Pode me contar um pouco sobre a história da empresa?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.history || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, history: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500 whitespace-pre-wrap"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"O que vocês gostariam que uma pessoa entendesse logo ao conhecer a marca?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.brandEssence || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, brandEssence: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500 whitespace-pre-wrap"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Objetivo do site */}
+                {activeTab === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">2. Objetivo do Site</h3>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-zinc-400 block">Qual o principal objetivo do site?</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          "Apresentar a empresa",
+                          "Atrair novos clientes",
+                          "Passar mais credibilidade",
+                          "Divulgar produtos/serviços",
+                          "Facilitar contato pelo WhatsApp"
+                        ].map((obj) => (
+                          <label key={obj} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={(briefingForm.goals || []).includes(obj)}
+                              onChange={() => toggleArrayField("goals", obj)}
+                              className="accent-violet-500 h-4 w-4 rounded"
+                            />
+                            <span>{obj}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="space-y-1.5 pt-2">
+                        <label className="text-xs font-semibold text-zinc-400">Outro objetivo:</label>
+                        <input
+                          type="text"
+                          value={briefingForm.goalsOther || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, goalsOther: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"O que vocês esperam que o site gere para a empresa?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.expectations || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, expectations: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Hoje vocês sentem falta de alguma coisa na presença digital?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.missingDigital || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, missingDigital: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Público-alvo */}
+                {activeTab === 3 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">3. Público-Alvo</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">Quem vocês querem atingir?</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Jovens de 18-25 anos, empresários, donas de casa..."
+                          value={briefingForm.targetAudience || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, targetAudience: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Região de Atendimento</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Local, regional, nacional..."
+                            value={briefingForm.targetRegion || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, targetRegion: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Perfil dos Clientes</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Classe A/B, B2B, tomadores de decisão..."
+                            value={briefingForm.targetProfile || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, targetProfile: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Quem normalmente procura vocês?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.whoLooksFor || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, whoLooksFor: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Qual tipo de cliente vocês gostariam de conquistar mais?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.whoToConquer || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, whoToConquer: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 4: Estrutura do site */}
+                {activeTab === 4 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">4. Estrutura do Site</h3>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-zinc-400 block">Páginas necessárias:</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          "Página inicial",
+                          "Sobre a empresa",
+                          "Produtos/Serviços",
+                          "Galeria de fotos",
+                          "Depoimentos",
+                          "Blog/notícias",
+                          "Contato/WhatsApp",
+                          "Localização/mapa"
+                        ].map((page) => (
+                          <label key={page} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={(briefingForm.pages || []).includes(page)}
+                              onChange={() => toggleArrayField("pages", page)}
+                              className="accent-violet-500 h-4 w-4 rounded"
+                            />
+                            <span>{page}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Quais informações vocês consideram essenciais para colocar no site?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.essentialInfo || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, essentialInfo: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Existe algum site que vocês gostam ou acham interessante?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.referencesSites || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, referencesSites: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 5: Conteúdo disponível */}
+                {activeTab === 5 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">5. Conteúdo Disponível</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <label className="text-xs font-semibold text-zinc-400 block">Materiais que o cliente já possui:</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {[
+                            "Logo",
+                            "Fotos profissionais",
+                            "Textos da empresa",
+                            "Redes sociais",
+                            "Vídeos"
+                          ].map((mat) => (
+                            <label key={mat} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={(briefingForm.materials || []).includes(mat)}
+                                onChange={() => toggleArrayField("materials", mat)}
+                                className="accent-violet-500 h-4 w-4 rounded"
+                              />
+                              <span>{mat}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-zinc-950 border border-zinc-850 rounded-xl flex items-center justify-between">
+                        <span className="text-xs font-semibold text-zinc-300">Precisa de ajuda para organizar os conteúdos?</span>
+                        <input
+                          type="checkbox"
+                          checked={briefingForm.needHelpContent || false}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, needHelpContent: e.target.checked })}
+                          className="accent-violet-500 h-5 w-5 rounded cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                        <label className="text-xs font-medium text-zinc-300 italic">"Vocês já possuem fotos e materiais da empresa?"</label>
+                        <textarea
+                          rows={3}
+                          value={briefingForm.materialsStatus || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, materialsStatus: e.target.value })}
+                          className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 6: Identidade visual */}
+                {activeTab === 6 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">6. Identidade Visual</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">Cores da Marca</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Azul escuro e dourado, preto e branco..."
+                          value={briefingForm.brandColors || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, brandColors: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-zinc-400 block">Estilo visual desejado:</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          {["Moderno", "Elegante", "Minimalista", "Tradicional", "Criativo"].map((style) => (
+                            <button
+                              key={style}
+                              type="button"
+                              onClick={() => setBriefingForm({ ...briefingForm, visualStyle: style })}
+                              className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                                briefingForm.visualStyle === style
+                                  ? "bg-violet-950/40 text-violet-400 border-violet-500/30"
+                                  : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:border-zinc-800"
+                              }`}
+                            >
+                              {style}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Existe alguma cor ou estilo que representa a empresa?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.colorsRepresentation || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, colorsRepresentation: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Tem alguma referência visual que vocês gostam?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.visualReferences || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, visualReferences: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 7: Funcionalidades */}
+                {activeTab === 7 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">7. Funcionalidades</h3>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-zinc-400 block">Funcionalidades:</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          "Botão WhatsApp",
+                          "Formulário de contato",
+                          "Catálogo de produtos",
+                          "Integração Instagram",
+                          "Google Maps",
+                          "Área de clientes",
+                          "Sistema personalizado"
+                        ].map((feat) => (
+                          <label key={feat} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={(briefingForm.features || []).includes(feat)}
+                              onChange={() => toggleArrayField("features", feat)}
+                              className="accent-violet-500 h-4 w-4 rounded"
+                            />
+                            <span>{feat}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"Existe alguma função específica que vocês imaginam no site?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.featuresSpecific || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, featuresSpecific: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                          <label className="text-xs font-medium text-zinc-300 italic">"O cliente precisa apenas visualizar ou realizar alguma ação?"</label>
+                          <textarea
+                            rows={3}
+                            value={briefingForm.clientAction || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, clientAction: e.target.value })}
+                            className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 8: Hospedagem e domínio */}
+                {activeTab === 8 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">8. Hospedagem & Domínio</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Já possui domínio?</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Sim (exemplo.com.br), Não..."
+                            value={briefingForm.hasDomain || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, hasDomain: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-400">Já possui hospedagem?</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Sim (Hostgator), Não..."
+                            value={briefingForm.hasHosting || ""}
+                            onChange={(e) => setBriefingForm({ ...briefingForm, hasHosting: e.target.value })}
+                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-zinc-400 block">Deseja contratar por conta própria ou deixar conosco?</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {["Contratar por conta própria", "Deixar com o Freelancer"].map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setBriefingForm({ ...briefingForm, domainHostingOption: option })}
+                              className={`py-2.5 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                                briefingForm.domainHostingOption === option
+                                  ? "bg-violet-950/40 text-violet-400 border-violet-500/30"
+                                  : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:border-zinc-800"
+                              }`}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 block mb-1">Explicação técnica sugerida</span>
+                        <p className="text-xs text-zinc-400 leading-relaxed italic">
+                          "Podemos deixar tudo registrado no nome da empresa, garantindo que vocês tenham total controle. Também podemos cuidar da parte técnica para facilitar."
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">Observações adicionais de Hospedagem</label>
+                        <textarea
+                          rows={2}
+                          value={briefingForm.domainHostingNotes || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, domainHostingNotes: e.target.value })}
+                          className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 9: Prazo */}
+                {activeTab === 9 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">9. Prazo</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-400">Existe uma data desejada para lançamento?</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Final do próximo mês, antes do natal..."
+                          value={briefingForm.desiredDate || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, desiredDate: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                        <label className="text-xs font-medium text-zinc-300 italic">"Existe algum evento, campanha ou momento específico que vocês querem aproveitar?"</label>
+                        <textarea
+                          rows={3}
+                          value={briefingForm.launchEvents || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, launchEvents: e.target.value })}
+                          className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 10: Investimento */}
+                {activeTab === 10 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">10. Investimento e Proposta</h3>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-zinc-400 block">Itens da proposta comercial a serem apresentados:</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          "Desenvolvimento do site",
+                          "Registro do domínio",
+                          "Hospedagem",
+                          "Manutenção (opcional)",
+                          "Atualizações futuras"
+                        ].map((item) => (
+                          <label key={item} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={(briefingForm.proposalItems || []).includes(item)}
+                              onChange={() => toggleArrayField("proposalItems", item)}
+                              className="accent-violet-500 h-4 w-4 rounded"
+                            />
+                            <span>{item}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="p-4 bg-violet-950/10 border border-violet-500/10 rounded-xl space-y-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-violet-400 block">Pergunta para Reunião</span>
+                        <label className="text-xs font-medium text-zinc-300 italic">"Dentro do que conversamos, faz sentido para vocês ter essa solução?"</label>
+                        <textarea
+                          rows={3}
+                          value={briefingForm.investmentNotes || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, investmentNotes: e.target.value })}
+                          className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 11: Próximos passos */}
+                {activeTab === 11 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400">11. Próximos Passos</h3>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-zinc-400 block">Fluxo de próximas etapas:</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          "Enviar proposta",
+                          "Receber materiais",
+                          "Aprovar layout",
+                          "Iniciar desenvolvimento",
+                          "Entregar site"
+                        ].map((step) => (
+                          <label key={step} className="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-850 bg-zinc-950/40 text-xs text-zinc-300 cursor-pointer hover:border-zinc-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={(briefingForm.nextSteps || []).includes(step)}
+                              onChange={() => toggleArrayField("nextSteps", step)}
+                              className="accent-violet-500 h-4 w-4 rounded"
+                            />
+                            <span>{step}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="space-y-1.5 pt-2">
+                        <label className="text-xs font-semibold text-zinc-400">Notas finais de acompanhamento</label>
+                        <textarea
+                          rows={4}
+                          value={briefingForm.nextStepsNotes || ""}
+                          onChange={(e) => setBriefingForm({ ...briefingForm, nextStepsNotes: e.target.value })}
+                          className="w-full p-3 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-white outline-none focus:border-violet-500"
+                          placeholder="Anotações gerais, datas de reuniões de retorno, acordos informais..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-zinc-850 flex items-center justify-between shrink-0 bg-zinc-950/35">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={activeTab === 1}
+                  onClick={() => setActiveTab(prev => Math.max(1, prev - 1))}
+                  className="px-4 py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-xs font-bold transition-all border border-zinc-800 flex items-center gap-1"
+                >
+                  <ChevronLeft size={14} />
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  disabled={activeTab === 11}
+                  onClick={() => setActiveTab(prev => Math.min(11, prev + 1))}
+                  className="px-4 py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-xs font-bold transition-all border border-zinc-800 flex items-center gap-1"
+                >
+                  Próximo
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBriefingOpen(false)}
+                  className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-850 text-xs font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveBriefing}
+                  disabled={isSavingBriefing}
+                  className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white text-xs font-bold shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-all flex items-center gap-1.5"
+                >
+                  {isSavingBriefing ? "Salvando..." : "Salvar Briefing"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

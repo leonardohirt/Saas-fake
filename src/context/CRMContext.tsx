@@ -54,6 +54,9 @@ interface CRMContextType {
   history: HistoryEntry[];
   addHistoryEntry: (projectId: string, action: string, details: string) => Promise<void>;
   
+  briefings: Record<string, any>;
+  saveBriefing: (clientId: string, content: any) => Promise<void>;
+  
   isLoading: boolean;
   isSupabaseActive: boolean;
 }
@@ -268,6 +271,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [briefings, setBriefings] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Load from Supabase (or fallback to LocalStorage)
@@ -306,9 +310,23 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           if (historyErr) throw historyErr;
 
+          // Fetch Briefings
+          const { data: dbBriefings, error: briefingsErr } = await supabase
+            .from("briefings")
+            .select("*");
+
+          // Do not crash if briefings table doesn't exist yet (user might run SQL later)
+          const briefingsMap: Record<string, any> = {};
+          if (!briefingsErr && dbBriefings) {
+            dbBriefings.forEach((b: any) => {
+              briefingsMap[b.client_id] = b.content;
+            });
+          }
+
           setClients((dbClients || []).map(mapClientToJS));
           setProjects((dbProjects || []).map(mapProjectToJS));
           setHistory((dbHistory || []).map(mapHistoryToJS));
+          setBriefings(briefingsMap);
         } catch (err) {
           console.error("Erro ao conectar com o Supabase, carregando localmente:", err);
           loadLocalStorageFallback();
@@ -342,6 +360,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setHistory(initialHistory);
         localStorage.setItem("crm_history", JSON.stringify(initialHistory));
+      }
+
+      const localBriefings = localStorage.getItem("crm_briefings");
+      if (localBriefings) {
+        setBriefings(JSON.parse(localBriefings));
+      } else {
+        setBriefings({});
       }
     };
 
@@ -450,22 +475,27 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteClient = async (id: string): Promise<void> => {
     const updated = clients.filter((client) => client.id !== id);
     const updatedProjects = projects.filter((project) => project.clientId !== id);
+    const updatedBriefings = { ...briefings };
+    delete updatedBriefings[id];
 
     if (isSupabaseReady && supabase) {
       try {
-        // Cascade delete will occur in PostgreSQL, but we call delete explicitly
+        await supabase.from("briefings").delete().eq("client_id", id);
         const { error } = await supabase.from("clients").delete().eq("id", id);
         if (error) throw error;
         setClients(updated);
         setProjects(updatedProjects);
+        setBriefings(updatedBriefings);
       } catch (err) {
         console.error("Erro no Supabase, excluindo localmente:", err);
         saveClientsLocally(updated);
         saveProjectsLocally(updatedProjects);
+        saveBriefingsLocally(updatedBriefings);
       }
     } else {
       saveClientsLocally(updated);
       saveProjectsLocally(updatedProjects);
+      saveBriefingsLocally(updatedBriefings);
     }
   };
 
@@ -614,6 +644,36 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveHistoryLocally(updated);
   };
 
+  // Briefing Functions
+  const saveBriefing = async (clientId: string, content: any): Promise<void> => {
+    const updated = { ...briefings, [clientId]: content };
+
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("briefings")
+          .upsert({
+            client_id: clientId,
+            content,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "client_id" });
+
+        if (error) throw error;
+        setBriefings(updated);
+      } catch (err) {
+        console.error("Erro ao salvar briefing no Supabase, usando local:", err);
+        saveBriefingsLocally(updated);
+      }
+    } else {
+      saveBriefingsLocally(updated);
+    }
+  };
+
+  const saveBriefingsLocally = (newBriefings: Record<string, any>) => {
+    setBriefings(newBriefings);
+    localStorage.setItem("crm_briefings", JSON.stringify(newBriefings));
+  };
+
   return (
     <CRMContext.Provider
       value={{
@@ -632,7 +692,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addHistoryEntry,
         isLoading,
         isSupabaseActive: isSupabaseReady,
-        currentUser
+        currentUser,
+        briefings,
+        saveBriefing
       }}
     >
       {children}
