@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase, isSupabaseReady } from "@/lib/supabaseClient";
 
 export interface Client {
   id: string;
@@ -16,7 +17,7 @@ export interface Project {
   id: string;
   clientId: string;
   name: string;
-  type: string; // 'Landing Page' | 'Site' | 'E-commerce' | 'Web App' | 'Outro'
+  type: string;
   status: 'Novo' | 'Em andamento' | 'Revisão' | 'Concluído';
   value: number;
   startDate: string;
@@ -40,23 +41,96 @@ interface CRMContextType {
   logout: () => void;
   
   clients: Client[];
-  addClient: (client: Omit<Client, "id" | "createdAt">) => Client;
-  updateClient: (id: string, client: Partial<Client>) => void;
-  deleteClient: (id: string) => void;
+  addClient: (client: Omit<Client, "id" | "createdAt">) => Promise<Client>;
+  updateClient: (id: string, client: Partial<Client>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
   
   projects: Project[];
-  addProject: (project: Omit<Project, "id">) => Project;
-  updateProject: (id: string, project: Partial<Project>, logDetails?: string) => void;
-  deleteProject: (id: string) => void;
+  addProject: (project: Omit<Project, "id">) => Promise<Project>;
+  updateProject: (id: string, project: Partial<Project>, logDetails?: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   
   history: HistoryEntry[];
-  addHistoryEntry: (projectId: string, action: string, details: string) => void;
+  addHistoryEntry: (projectId: string, action: string, details: string) => Promise<void>;
   
   isLoading: boolean;
+  isSupabaseActive: boolean;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
+// Mappings between Database (snake_case) and JS/React (camelCase)
+const mapClientToJS = (dbClient: any): Client => ({
+  id: dbClient.id,
+  name: dbClient.name,
+  company: dbClient.company,
+  whatsapp: dbClient.whatsapp,
+  email: dbClient.email,
+  notes: dbClient.notes || "",
+  createdAt: dbClient.created_at
+});
+
+const mapClientToDB = (client: Partial<Client>) => {
+  const db: any = {};
+  if (client.id !== undefined) db.id = client.id;
+  if (client.name !== undefined) db.name = client.name;
+  if (client.company !== undefined) db.company = client.company;
+  if (client.whatsapp !== undefined) db.whatsapp = client.whatsapp;
+  if (client.email !== undefined) db.email = client.email;
+  if (client.notes !== undefined) db.notes = client.notes;
+  if (client.createdAt !== undefined) db.created_at = client.createdAt;
+  return db;
+};
+
+const mapProjectToJS = (dbProject: any): Project => ({
+  id: dbProject.id,
+  clientId: dbProject.client_id,
+  name: dbProject.name,
+  type: dbProject.type,
+  status: dbProject.status,
+  value: Number(dbProject.value),
+  startDate: dbProject.start_date,
+  deadline: dbProject.deadline,
+  description: dbProject.description || "",
+  githubLink: dbProject.github_link || "",
+  websiteLink: dbProject.website_link || ""
+});
+
+const mapProjectToDB = (project: Partial<Project>) => {
+  const db: any = {};
+  if (project.id !== undefined) db.id = project.id;
+  if (project.clientId !== undefined) db.client_id = project.clientId;
+  if (project.name !== undefined) db.name = project.name;
+  if (project.type !== undefined) db.type = project.type;
+  if (project.status !== undefined) db.status = project.status;
+  if (project.value !== undefined) db.value = project.value;
+  if (project.startDate !== undefined) db.start_date = project.startDate;
+  if (project.deadline !== undefined) db.deadline = project.deadline;
+  if (project.description !== undefined) db.description = project.description;
+  if (project.githubLink !== undefined) db.github_link = project.githubLink;
+  if (project.websiteLink !== undefined) db.website_link = project.websiteLink;
+  return db;
+};
+
+const mapHistoryToJS = (dbHistory: any): HistoryEntry => ({
+  id: dbHistory.id,
+  projectId: dbHistory.project_id,
+  action: dbHistory.action,
+  details: dbHistory.details,
+  timestamp: dbHistory.timestamp
+});
+
+const mapHistoryToDB = (h: Partial<HistoryEntry>) => {
+  const db: any = {};
+  if (h.id !== undefined) db.id = h.id;
+  if (h.projectId !== undefined) db.project_id = h.projectId;
+  if (h.action !== undefined) db.action = h.action;
+  if (h.details !== undefined) db.details = h.details;
+  if (h.timestamp !== undefined) db.timestamp = h.timestamp;
+  return db;
+};
+
+// Initial Mock data for LocalStorage Demo fallback
 const initialClients: Client[] = [
   {
     id: "c-1",
@@ -194,12 +268,54 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load from localStorage
+  // Load from Supabase (or fallback to LocalStorage)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    const initData = async () => {
+      if (typeof window === "undefined") return;
+
+      // Load session
       const auth = localStorage.getItem("crm_auth");
       setIsAuthenticated(auth === "true");
 
+      if (isSupabaseReady && supabase) {
+        try {
+          // Fetch Clients
+          const { data: dbClients, error: clientsErr } = await supabase
+            .from("clients")
+            .select("*")
+            .order("name", { ascending: true });
+
+          if (clientsErr) throw clientsErr;
+
+          // Fetch Projects
+          const { data: dbProjects, error: projectsErr } = await supabase
+            .from("projects")
+            .select("*");
+
+          if (projectsErr) throw projectsErr;
+
+          // Fetch History
+          const { data: dbHistory, error: historyErr } = await supabase
+            .from("history")
+            .select("*")
+            .order("timestamp", { ascending: false });
+
+          if (historyErr) throw historyErr;
+
+          setClients((dbClients || []).map(mapClientToJS));
+          setProjects((dbProjects || []).map(mapProjectToJS));
+          setHistory((dbHistory || []).map(mapHistoryToJS));
+        } catch (err) {
+          console.error("Erro ao conectar com o Supabase, carregando localmente:", err);
+          loadLocalStorageFallback();
+        }
+      } else {
+        loadLocalStorageFallback();
+      }
+      setIsLoading(false);
+    };
+
+    const loadLocalStorageFallback = () => {
       const localClients = localStorage.getItem("crm_clients");
       if (localClients) {
         setClients(JSON.parse(localClients));
@@ -223,23 +339,23 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHistory(initialHistory);
         localStorage.setItem("crm_history", JSON.stringify(initialHistory));
       }
-      
-      setIsLoading(false);
-    }
+    };
+
+    initData();
   }, []);
 
-  // Save actions to localStorage
-  const saveClients = (newClients: Client[]) => {
+  // LocalStorage state persistence helpers (for fallback mode)
+  const saveClientsLocally = (newClients: Client[]) => {
     setClients(newClients);
     localStorage.setItem("crm_clients", JSON.stringify(newClients));
   };
 
-  const saveProjects = (newProjects: Project[]) => {
+  const saveProjectsLocally = (newProjects: Project[]) => {
     setProjects(newProjects);
     localStorage.setItem("crm_projects", JSON.stringify(newProjects));
   };
 
-  const saveHistory = (newHistory: HistoryEntry[]) => {
+  const saveHistoryLocally = (newHistory: HistoryEntry[]) => {
     setHistory(newHistory);
     localStorage.setItem("crm_history", JSON.stringify(newHistory));
   };
@@ -260,80 +376,208 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Client Functions
-  const addClient = (clientData: Omit<Client, "id" | "createdAt">): Client => {
+  const addClient = async (clientData: Omit<Client, "id" | "createdAt">): Promise<Client> => {
     const newClient: Client = {
       ...clientData,
       id: `c-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    const updated = [...clients, newClient];
-    saveClients(updated);
+
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("clients")
+          .insert(mapClientToDB(newClient));
+        if (error) throw error;
+        setClients(prev => [...prev, newClient]);
+      } catch (err) {
+        console.error("Erro no Supabase, adicionando localmente:", err);
+        saveClientsLocally([...clients, newClient]);
+      }
+    } else {
+      saveClientsLocally([...clients, newClient]);
+    }
     return newClient;
   };
 
-  const updateClient = (id: string, updatedFields: Partial<Client>) => {
+  const updateClient = async (id: string, updatedFields: Partial<Client>): Promise<void> => {
     const updated = clients.map((client) =>
       client.id === id ? { ...client, ...updatedFields } : client
     );
-    saveClients(updated);
+
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("clients")
+          .update(mapClientToDB(updatedFields))
+          .eq("id", id);
+        if (error) throw error;
+        setClients(updated);
+      } catch (err) {
+        console.error("Erro no Supabase, editando localmente:", err);
+        saveClientsLocally(updated);
+      }
+    } else {
+      saveClientsLocally(updated);
+    }
   };
 
-  const deleteClient = (id: string) => {
+  const deleteClient = async (id: string): Promise<void> => {
     const updated = clients.filter((client) => client.id !== id);
-    saveClients(updated);
-    
-    // Optional: cascade delete projects or leave them unassigned
     const updatedProjects = projects.filter((project) => project.clientId !== id);
-    saveProjects(updatedProjects);
+
+    if (isSupabaseReady && supabase) {
+      try {
+        // Cascade delete will occur in PostgreSQL, but we call delete explicitly
+        const { error } = await supabase.from("clients").delete().eq("id", id);
+        if (error) throw error;
+        setClients(updated);
+        setProjects(updatedProjects);
+      } catch (err) {
+        console.error("Erro no Supabase, excluindo localmente:", err);
+        saveClientsLocally(updated);
+        saveProjectsLocally(updatedProjects);
+      }
+    } else {
+      saveClientsLocally(updated);
+      saveProjectsLocally(updatedProjects);
+    }
   };
 
   // Project Functions
-  const addProject = (projectData: Omit<Project, "id">): Project => {
+  const addProject = async (projectData: Omit<Project, "id">): Promise<Project> => {
     const newProject: Project = {
       ...projectData,
       id: `p-${Date.now()}`
     };
-    const updated = [...projects, newProject];
-    saveProjects(updated);
 
-    // Add creation history
-    addHistoryEntry(newProject.id, "Criação", `Projeto criado com status '${newProject.status}'.`);
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("projects")
+          .insert(mapProjectToDB(newProject));
+        if (error) throw error;
+        setProjects(prev => [...prev, newProject]);
+        
+        // Add creation history
+        await addHistoryEntry(newProject.id, "Criação", `Projeto criado com status '${newProject.status}'.`);
+      } catch (err) {
+        console.error("Erro no Supabase, adicionando localmente:", err);
+        saveProjectsLocally([...projects, newProject]);
+        addHistoryEntryLocally(newProject.id, "Criação", `Projeto criado com status '${newProject.status}'.`);
+      }
+    } else {
+      saveProjectsLocally([...projects, newProject]);
+      addHistoryEntryLocally(newProject.id, "Criação", `Projeto criado com status '${newProject.status}'.`);
+    }
     
     return newProject;
   };
 
-  const updateProject = (id: string, updatedFields: Partial<Project>, logDetails?: string) => {
+  const updateProject = async (id: string, updatedFields: Partial<Project>, logDetails?: string): Promise<void> => {
     const originalProject = projects.find((p) => p.id === id);
     if (!originalProject) return;
 
     const updated = projects.map((project) =>
       project.id === id ? { ...project, ...updatedFields } : project
     );
-    saveProjects(updated);
 
-    // Automatic logging for status changes if not manually specified
-    if (updatedFields.status && updatedFields.status !== originalProject.status) {
-      addHistoryEntry(
-        id,
-        "Alteração de Status",
-        `Status alterado de '${originalProject.status}' para '${updatedFields.status}'.`
-      );
-    } else if (logDetails) {
-      addHistoryEntry(id, "Edição", logDetails);
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("projects")
+          .update(mapProjectToDB(updatedFields))
+          .eq("id", id);
+        if (error) throw error;
+        setProjects(updated);
+
+        // Automatic logging
+        if (updatedFields.status && updatedFields.status !== originalProject.status) {
+          await addHistoryEntry(
+            id,
+            "Alteração de Status",
+            `Status alterado de '${originalProject.status}' para '${updatedFields.status}'.`
+          );
+        } else if (logDetails) {
+          await addHistoryEntry(id, "Edição", logDetails);
+        }
+      } catch (err) {
+        console.error("Erro no Supabase, editando localmente:", err);
+        saveProjectsLocally(updated);
+        
+        if (updatedFields.status && updatedFields.status !== originalProject.status) {
+          addHistoryEntryLocally(
+            id,
+            "Alteração de Status",
+            `Status alterado de '${originalProject.status}' para '${updatedFields.status}'.`
+          );
+        } else if (logDetails) {
+          addHistoryEntryLocally(id, "Edição", logDetails);
+        }
+      }
+    } else {
+      saveProjectsLocally(updated);
+      
+      if (updatedFields.status && updatedFields.status !== originalProject.status) {
+        addHistoryEntryLocally(
+          id,
+          "Alteração de Status",
+          `Status alterado de '${originalProject.status}' para '${updatedFields.status}'.`
+        );
+      } else if (logDetails) {
+        addHistoryEntryLocally(id, "Edição", logDetails);
+      }
     }
   };
 
-  const deleteProject = (id: string) => {
+  const deleteProject = async (id: string): Promise<void> => {
     const updated = projects.filter((project) => project.id !== id);
-    saveProjects(updated);
-
-    // Delete project logs too
     const updatedHistory = history.filter((h) => h.projectId !== id);
-    saveHistory(updatedHistory);
+
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase.from("projects").delete().eq("id", id);
+        if (error) throw error;
+        setProjects(updated);
+        setHistory(updatedHistory);
+      } catch (err) {
+        console.error("Erro no Supabase, deletando localmente:", err);
+        saveProjectsLocally(updated);
+        saveHistoryLocally(updatedHistory);
+      }
+    } else {
+      saveProjectsLocally(updated);
+      saveHistoryLocally(updatedHistory);
+    }
   };
 
   // History Functions
-  const addHistoryEntry = (projectId: string, action: string, details: string) => {
+  const addHistoryEntry = async (projectId: string, action: string, details: string): Promise<void> => {
+    const newEntry: HistoryEntry = {
+      id: `h-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      projectId,
+      action,
+      details,
+      timestamp: new Date().toISOString()
+    };
+
+    if (isSupabaseReady && supabase) {
+      try {
+        const { error } = await supabase
+          .from("history")
+          .insert(mapHistoryToDB(newEntry));
+        if (error) throw error;
+        setHistory(prev => [newEntry, ...prev]);
+      } catch (err) {
+        console.error("Erro no Supabase, salvando histórico localmente:", err);
+        addHistoryEntryLocally(projectId, action, details);
+      }
+    } else {
+      addHistoryEntryLocally(projectId, action, details);
+    }
+  };
+
+  const addHistoryEntryLocally = (projectId: string, action: string, details: string) => {
     const newEntry: HistoryEntry = {
       id: `h-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       projectId,
@@ -342,7 +586,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toISOString()
     };
     const updated = [newEntry, ...history];
-    saveHistory(updated);
+    saveHistoryLocally(updated);
   };
 
   return (
@@ -361,7 +605,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteProject,
         history,
         addHistoryEntry,
-        isLoading
+        isLoading,
+        isSupabaseActive: isSupabaseReady
       }}
     >
       {children}

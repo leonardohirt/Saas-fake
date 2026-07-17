@@ -12,7 +12,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Code2
+  Code2,
+  Database
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -20,7 +21,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, logout, isLoading } = useCRM();
+  const { isAuthenticated, logout, isLoading, isSupabaseActive } = useCRM();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,7 +56,18 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+      {/* Demo Mode Top Banner */}
+      {!isSupabaseActive && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-350 px-4 py-2.5 text-[11px] font-semibold text-center flex items-center justify-center gap-2 shrink-0 animate-in slide-in-from-top duration-300">
+          <Database size={13} className="text-amber-400 shrink-0" />
+          <span>
+            <strong>Modo de Demonstração (localStorage)</strong>: Conecte o Supabase configurando as chaves no arquivo <code>.env.local</code> para habilitar sincronização em tempo real e acesso multiusuário.
+          </span>
+        </div>
+      )}
+      
+      <div className="flex flex-1 overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-zinc-900 border-r border-zinc-800/60 shrink-0">
         {/* Sidebar Header */}
@@ -208,5 +220,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+  </div>
   );
 }
