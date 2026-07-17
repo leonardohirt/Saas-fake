@@ -21,10 +21,34 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, logout, isLoading, isSupabaseActive } = useCRM();
+  const { isAuthenticated, logout, isLoading, isSupabaseActive, currentUser } = useCRM();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const formatUsername = (username: string | null) => {
+    if (!username) return { name: "Usuário", initials: "US", email: "user@devcrm.io" };
+    if (username === "admin") return { name: "Administrador", initials: "AD", email: "admin@devcrm.io" };
+    
+    const parts = username.split(".");
+    if (parts.length >= 2) {
+      const first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      const last = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+      return {
+        name: `${first} ${last}`,
+        initials: (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase(),
+        email: `${username}@devcrm.io`
+      };
+    }
+    
+    return {
+      name: username.charAt(0).toUpperCase() + username.slice(1),
+      initials: username.slice(0, 2).toUpperCase(),
+      email: `${username}@devcrm.io`
+    };
+  };
+
+  const userProfile = formatUsername(currentUser);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -108,11 +132,11 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-lg">
             <div className="flex items-center gap-2.5">
               <div className="flex items-center justify-center h-8 w-8 rounded-full bg-zinc-800 font-semibold text-xs text-violet-400 border border-zinc-700">
-                AD
+                {userProfile.initials}
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-zinc-200">Administrador</span>
-                <span className="text-[10px] text-zinc-500">admin@devcrm.io</span>
+                <span className="text-xs font-semibold text-zinc-200">{userProfile.name}</span>
+                <span className="text-[10px] text-zinc-500">{userProfile.email}</span>
               </div>
             </div>
             <button
@@ -192,11 +216,11 @@ export default function DashboardLayout({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center justify-center h-8 w-8 rounded-full bg-zinc-800 font-semibold text-xs text-violet-400 border border-zinc-700">
-                      AD
+                      {userProfile.initials}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-zinc-200">Administrador</span>
-                      <span className="text-[10px] text-zinc-500">admin@devcrm.io</span>
+                      <span className="text-xs font-semibold text-zinc-200">{userProfile.name}</span>
+                      <span className="text-[10px] text-zinc-500">{userProfile.email}</span>
                     </div>
                   </div>
                   <button

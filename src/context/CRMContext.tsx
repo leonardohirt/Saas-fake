@@ -37,7 +37,8 @@ export interface HistoryEntry {
 
 interface CRMContextType {
   isAuthenticated: boolean;
-  login: (user: string, pass: string) => boolean;
+  currentUser: string | null;
+  login: (user: string, pass: string) => Promise<boolean>;
   logout: () => void;
   
   clients: Client[];
@@ -263,6 +264,7 @@ const initialHistory: HistoryEntry[] = [
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -276,6 +278,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Load session
       const auth = localStorage.getItem("crm_auth");
       setIsAuthenticated(auth === "true");
+      const savedUser = localStorage.getItem("crm_user");
+      setCurrentUser(savedUser);
 
       if (isSupabaseReady && supabase) {
         try {
@@ -361,10 +365,46 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth Functions
-  const login = (user: string, pass: string): boolean => {
-    if (user === "admin" && pass === "admin") {
+  const login = async (user: string, pass: string): Promise<boolean> => {
+    if (isSupabaseReady && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("username")
+          .eq("username", user)
+          .eq("password", pass)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setIsAuthenticated(true);
+          setCurrentUser(data.username);
+          localStorage.setItem("crm_auth", "true");
+          localStorage.setItem("crm_user", data.username);
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.error("Erro no login do Supabase, tentando fallback local:", err);
+        return fallbackLogin(user, pass);
+      }
+    } else {
+      return fallbackLogin(user, pass);
+    }
+  };
+
+  const fallbackLogin = (user: string, pass: string): boolean => {
+    const isValid = 
+      (user === "larissa.gomes" && pass === "160725") || 
+      (user === "leonardo.hirt" && pass === "160725") ||
+      (user === "admin" && pass === "admin");
+      
+    if (isValid) {
       setIsAuthenticated(true);
+      setCurrentUser(user);
       localStorage.setItem("crm_auth", "true");
+      localStorage.setItem("crm_user", user);
       return true;
     }
     return false;
@@ -372,7 +412,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
     localStorage.removeItem("crm_auth");
+    localStorage.removeItem("crm_user");
   };
 
   // Client Functions
@@ -606,7 +648,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         history,
         addHistoryEntry,
         isLoading,
-        isSupabaseActive: isSupabaseReady
+        isSupabaseActive: isSupabaseReady,
+        currentUser
       }}
     >
       {children}

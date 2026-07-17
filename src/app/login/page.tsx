@@ -26,13 +26,13 @@ export default function Login() {
     setIsSubmitting(true);
 
     // Artificial tiny delay for premium feel
-    setTimeout(() => {
-      const success = login(username, password);
+    setTimeout(async () => {
+      const success = await login(username, password);
       setIsSubmitting(false);
       if (success) {
         router.push("/");
       } else {
-        setError("Usuário ou senha incorretos. Tente admin / admin.");
+        setError("Usuário ou senha incorretos.");
       }
     }, 600);
   };
@@ -133,8 +133,10 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="flex justify-center text-[10px] text-zinc-500 font-semibold tracking-wider uppercase border-t border-zinc-850 pt-4">
-            Credenciais Padrão: admin / admin
+          <div className="flex flex-col items-center gap-1 text-[10px] text-zinc-500 font-semibold tracking-wider uppercase border-t border-zinc-850 pt-4 text-center">
+            <span>Acesso Autorizado:</span>
+            <span>larissa.gomes / 160725</span>
+            <span>leonardo.hirt / 160725</span>
           </div>
         </div>
       </div>
