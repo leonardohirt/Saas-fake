@@ -17,7 +17,13 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { clients, projects, addClient, addProject } = useCRM();
+  const { clients, projects, currentUser } = useCRM();
+
+  const getGreeting = (username: string | null) => {
+    if (username === "leonardo.hirt") return "Olá, Desenvolvedor Leonardo";
+    if (username === "larissa.gomes") return "Olá, Desenvolvedora Larissa";
+    return "Olá, Desenvolvedor(a)";
+  };
 
   // Metrics calculations
   const totalClients = clients.length;
@@ -98,7 +104,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
-            Olá, Desenvolvedor!
+            {getGreeting(currentUser)}
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
             Aqui está o resumo da sua operação freelance hoje.
