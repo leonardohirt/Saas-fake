@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useCRM, Client, Project } from "@/context/CRMContext";
 import { useSearchParams, useRouter } from "next/navigation";
+import { generateBriefingPDF } from "@/lib/pdfGenerator";
 import { 
   Users, 
   Plus, 
@@ -18,7 +19,8 @@ import {
   ChevronRight,
   ChevronLeft,
   FolderKanban,
-  ClipboardList
+  ClipboardList,
+  Download
 } from "lucide-react";
 
 export default function ClientesPage() {
@@ -294,13 +296,25 @@ export default function ClientesPage() {
                         {/* Title and Action Buttons */}
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h3 className="font-bold text-white text-base group-hover:text-violet-400 transition-colors leading-snug flex items-center gap-2">
-                              {client.name}
+                            <h3 className="font-bold text-white text-base group-hover:text-violet-400 transition-colors leading-snug flex items-center justify-between gap-2">
+                              <span>{client.name}</span>
                               {hasBriefing(client.id) && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-semibold uppercase tracking-wider shrink-0">
-                                  <ClipboardList size={10} />
-                                  Reunião Feita
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-semibold uppercase tracking-wider shrink-0">
+                                    <ClipboardList size={10} />
+                                    Reunião Feita
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      generateBriefingPDF(client, briefings[client.id]);
+                                    }}
+                                    title="Baixar Briefing em PDF"
+                                    className="p-1 rounded bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30 transition-colors"
+                                  >
+                                    <Download size={11} />
+                                  </button>
+                                </div>
                               )}
                             </h3>
                             <div className="flex items-center gap-1.5 text-zinc-400 text-xs mt-1">
@@ -423,18 +437,30 @@ export default function ClientesPage() {
               )}
             </div>
 
-            {/* Briefing Action Button */}
-            <button
-              onClick={() => openBriefingModal(selectedClient)}
-              className={`w-full py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all duration-200 ${
-                hasBriefing(selectedClient.id)
-                  ? "bg-emerald-950/20 border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 hover:bg-emerald-950/30"
-                  : "bg-zinc-800 hover:bg-zinc-750 border-zinc-750 text-zinc-200"
-              }`}
-            >
-              <ClipboardList size={14} />
-              {hasBriefing(selectedClient.id) ? "Ver / Editar Briefing" : "Preencher Briefing de Reunião"}
-            </button>
+            {/* Briefing Action Button & PDF Download */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => openBriefingModal(selectedClient)}
+                className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all duration-200 ${
+                  hasBriefing(selectedClient.id)
+                    ? "bg-emerald-950/20 border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 hover:bg-emerald-950/30"
+                    : "bg-zinc-800 hover:bg-zinc-750 border-zinc-750 text-zinc-200"
+                }`}
+              >
+                <ClipboardList size={14} />
+                {hasBriefing(selectedClient.id) ? "Ver / Editar Briefing" : "Preencher Briefing de Reunião"}
+              </button>
+              {hasBriefing(selectedClient.id) && (
+                <button
+                  onClick={() => generateBriefingPDF(selectedClient, briefings[selectedClient.id])}
+                  className="py-2.5 px-3 rounded-xl border border-violet-500/30 bg-violet-950/20 hover:bg-violet-900/40 text-violet-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0"
+                  title="Baixar Briefing em PDF"
+                >
+                  <Download size={14} />
+                  <span>PDF</span>
+                </button>
+              )}
+            </div>
 
             {/* Linked Projects */}
             <div className="space-y-3 pt-4 border-t border-zinc-850">
@@ -635,12 +661,23 @@ export default function ClientesPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsBriefingOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => generateBriefingPDF(briefingClient, briefingForm)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 text-xs font-semibold transition-all"
+                  title="Baixar Briefing em PDF"
+                >
+                  <Download size={14} />
+                  <span>Baixar PDF</span>
+                </button>
+                <button
+                  onClick={() => setIsBriefingOpen(false)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Content Body: 2 Columns */}
