@@ -17,6 +17,9 @@ import { CRMProvider } from "@/context/CRMContext";
 export const metadata: Metadata = {
   title: "Freelancer CRM - Gestão de Clientes e Projetos",
   description: "Sistema moderno de CRM para desenvolvedores freelancers.",
+  icons: {
+    icon: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({

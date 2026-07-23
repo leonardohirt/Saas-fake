@@ -96,8 +96,8 @@ export default function DashboardLayout({
       <aside className="hidden md:flex flex-col w-64 bg-zinc-900 border-r border-zinc-800/60 shrink-0">
         {/* Sidebar Header */}
         <div className="flex items-center gap-3 px-6 h-16 border-b border-zinc-800/60">
-          <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-md shadow-violet-500/10">
-            <Code2 size={20} />
+          <div className="flex items-center justify-center h-9 w-9 rounded-lg overflow-hidden shadow-md shadow-violet-500/10 border border-zinc-800">
+            <img src="/logo.jpg" alt="DevCRM" className="h-full w-full object-cover" />
           </div>
           <div>
             <h1 className="font-bold text-base leading-none bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">DevCRM</h1>
@@ -155,8 +155,8 @@ export default function DashboardLayout({
         {/* Mobile Header */}
         <header className="flex md:hidden items-center justify-between px-6 h-16 bg-zinc-900 border-b border-zinc-800/60">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-md">
-              <Code2 size={16} />
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg overflow-hidden shadow-md border border-zinc-800">
+              <img src="/logo.jpg" alt="DevCRM" className="h-full w-full object-cover" />
             </div>
             <span className="font-bold text-sm tracking-wide">DevCRM</span>
           </div>
@@ -176,8 +176,8 @@ export default function DashboardLayout({
               <div>
                 <div className="flex items-center justify-between pb-6 border-b border-zinc-850">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-500 text-white">
-                      <Code2 size={16} />
+                    <div className="flex items-center justify-center h-8 w-8 rounded-lg overflow-hidden border border-zinc-800">
+                      <img src="/logo.jpg" alt="DevCRM" className="h-full w-full object-cover" />
                     </div>
                     <span className="font-bold text-sm tracking-wide">DevCRM</span>
                   </div>

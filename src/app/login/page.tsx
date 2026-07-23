@@ -54,8 +54,8 @@ export default function Login() {
       <div className="w-full max-w-md space-y-8 z-10">
         {/* Title / Logo */}
         <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-xl shadow-violet-500/20 mb-4 scale-100 hover:scale-105 transition-transform duration-300">
-            <Code2 size={24} />
+          <div className="flex items-center justify-center h-12 w-12 rounded-2xl overflow-hidden shadow-xl shadow-violet-500/20 mb-4 scale-100 hover:scale-105 transition-transform duration-300 border border-zinc-800">
+            <img src="/logo.jpg" alt="DevCRM" className="h-full w-full object-cover" />
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight text-white text-center">
             Bem-vindo ao <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">DevCRM</span>
